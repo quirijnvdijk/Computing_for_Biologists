@@ -1,0 +1,11 @@
+Command	Use
+
+git clone http://	Clone files from a github page, you will find the url needed on its github website
+git status	Make git check for new files
+git add --all :/	Stage every modified file in current folder including subfolders
+git commit -m "text"	Commit (explain) changes since made
+git pull	Update your local folder to match the Cloud
+git push	Push the file to the Cloud
+
+git config --global user.name "Your Name"	Set your name
+git config --global user.email you@example.com	Set your e-mail
