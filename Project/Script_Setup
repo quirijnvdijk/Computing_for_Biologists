@@ -1,0 +1,22 @@
+#! /bin/bash
+
+# Coarse-Graining the protein
+chmod u+x martinize25.py
+./martinize25.py -dssp dssp-2.0.4-linux-i386 -f protein.pdb -o protein_CG.top -x protein_CG.pdb -v
+
+# Creating lipid bilayer and inserting the protein
+chmod u+x insane.py
+./insane.py -f protein_CG.pdb -o protein_bilayer.gro -x 18 -y 18 -z 9 -a 0.6 -l POPC:5.41 -l POPE:4.47 -l POPI:0.64 -l CHOL:1.54 -l DPCE:0.63 -u POPC:4.43 -u POPE:1.12 -u POPI:1.5 -u CHOL:1.54 -u DPCE:0.45 -sol W -center -orient 2> protein_bilayer.top
+# The output amount of lipids and water need to be put into the topology file. There are two standard output files for a command. In this case the stdout (1st channel) goes to protein_bilayer.gro by the flag -o. The second output is redirected from the screen to the file protein_bilayer.top. The 2> is used to do this (2nd channel + write to file). The amount of lipids and water in the protein_bilayer.top file need to be put in the protein_CG.top file.
+
+tail -n 12 protein_bilayer.top >> protein_CG.top # This adds the amount of lipids and water to the topology file
+sed -i 's/^.*martini/&_v2.1/' protein_CG.top # This changes the force field include statement in the topology file to the proper version, 2.1.
+sed -i 's/^.*martini_v2.1.itp"/&\n#include "martini_v2.0_CHOL_02.itp"\n#include "martini_v2.0_DPCE_01.itp"\n#include "martini_v2.0_DPPC_01.itp"\n#include "martini_v2.0_POPC_02.itp"\n#include "martini_v2.0_POPE_02.itp"\n#include "martini_v2.0_POPI_01.itp"\n#include "martini_v2.0_ions.itp"/' protein_CG.top # Add some itp files of the lipids and ions in which they are defined to the topology file.
+
+# Changing water beads (W) into ions (NA+ & CL-). There is 55,5 mol/L water molecules in water. For a concentration of 150mM sodium and cloride ions we need: 55,5 / 0,150 molecules of sodium and chloride ions added: 370. Since water is course-grained, 4 molecules of water become one bead: 370/4=92,5. In the topology file it is stated that there are 11781 water beads in the system: 11781//92,5=127. 127 NA+ and 127 CL- need to be added. However the system also needs to be charge neutral. The POPI lipids have a net charge of -1. The system therefore has a negative charge of 101. That's why 101 extra NA+ are added. I use the program VI for this task because it has the capability of 'visual block' which can select columns and change it's name.
+# vim protein_bilayer.gro # This opens the coordinate file in vim, an extended version of vi
+# G # This let's you go to the end of the file
+# <Ctrl> + V # Go to visual block mode to select the column with the two W characters with the appropriate amount of lines for CL-&NA+ 
+# c # c clears the line and let's you enter insert mode (VI has different modes in which you can operate)
+# type "CL-    CL-" and hit escape, now the last 127 lines of Water molecules changed into Chloride ions!
+# save the file by :w, and quit by :q 

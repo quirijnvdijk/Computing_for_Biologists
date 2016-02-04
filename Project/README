@@ -1,0 +1,89 @@
+This is the README file for running a molecular dynamics simulation of a protein in a lipid membrane.
+In this specific example we look at the Voltage Dependant Anion Channel 1 (VDAC1) of humans. 
+The files required to run the scripts stated in this document are:
+2jk4.pdb
+cluster_md.mdp
+insane.py
+martini_v2.0_CHOL_02.itp
+martini_v2.0_DPCE_01.itp
+martini_v2.0_DPPC_01.itp
+martini_v2.0_ions.itp
+martini_v2.0_POPC_02.itp
+martini_v2.0_POPE_02.itp
+martini_v2.0_POPI_01.itp
+martini_v2.1.itp
+martinize25.py
+minimization.mdp
+protein.pdb
+README
+Script_Installation
+Script_Setup
+Script_Simulations
+
+= Workflow =
+
+1. Installing programs: CMAKE; GROMACS; DSSP; 
+2. Download the pdb file of your protein
+3. Use the martinize script to coarse-grain your protein
+4. Insert the protein in the membrane using the insane script with an appropriate box size, the right lipid composition for the inner and outer leaflet.
+5. Update the topology with the amount of lipids and water
+6. Add ions to neutralize the system and simulate the physiological salt concentration
+7. Do a minimization run to relax the system
+8. Prepare a run file for a job on the cluster
+9. Copy to cluster and run
+10. Copy back and analyze
+
+= Installing Programs = 
+
+To install GROMACS and DSSP you can run the script "Script_Installation". DSSP is for a linux 32-bit system. If you have another system, please follow the link ftp://ftp.cmbi.ru.nl/pub/software/dssp/ and copy the link location for the proper system you are running into the Script_Setup after the wget command.
+
+= Setting up the System =
+
+To set up the system, first download the protein you want to simulate. This can be done by the curl command:
+curl URL > protein.pdb
+For me this was: curl http://www.rcsb.org/pdb/download/downloadFile.do?fileFormat=pdb&compression=NO&structureId=2JK4 > protein.pdb
+Make sure you copied all the itp files from the Github. They are needed for the topology file. The topology file refers to them.
+Now you can run the script "Script_Setup"
+The ions have to be adjusted manualy in your coordinate file: protein_bilayer.gro. This can be calculated and done as follows:
+
+Changing water beads (W) into ions (NA+ & CL-). There is 55,5 mol/L water molecules in water. For a concentration of 150mM sodium and cloride ions we need: 55,5 / 0,150 molecules of sodium and chloride ions added: 370. Since water is course-grained, 4 molecules of water become one bead: 370/4=92,5. In the topology file it is stated that there are 11781 water beads in the system: 11781//92,5=127. 127 NA+ and 127 CL- need to be added. However the system also needs to be charge neutral. The POPI lipids have a net charge of -1. The system therefore has a negative charge of 101. That's why 101 extra NA+ are added. I use the program VI for this task because it has the capability of 'visual block' which can select columns and change it's name.
+vim protein_bilayer.gro # This opens the coordinate file in vim, an extended version of vi
+G # This let's you go to the end of the file
+<Ctrl> + V # Go to visual block mode to select the column with the two W characters with the appropriate amount of lines for CL-&NA+ 
+c # c clears the line and let's you enter insert mode (VI has different modes in which you can operate)
+type "CL-    CL-" and hit escape, now the last 127 lines of Water molecules changed into Chloride ions!
+save the file by :w, and quit by :q 
+
+= Running the Simulation = 
+
+The simulation can be minimized and run on the cluster using the script "Script_Simulations".
+Please change the username into your own username and supply your password when prompted.
+An index file is created to make two extra groups: bilayer and solvent. These are pressure-coupled separately (specified in the cluster_md.mdp file). This is done with the program make_ndx -f *your coordinate file (in this case confout.gro). In this program you can type 18 | 19 to create a new group with Water and Ions merged. Name this new group "solvent": name 20 solvent. Make another group with everything else: !20. Name it "bilayer": name 21 bilayer. Enter q to save and quit.
+When you are logged into peregrine cluster, run the jobscript: ./Protein_Bilayer_Sim/protein_bilayer_peregrine_job.sh
+
+= General Information =
+
+GROMACS
+GROMACS stands for GROninger MAchine for Chemical Simulations. It was developed in the 90s at the University of Groningen by Berendsen. It's coded in C & Assembly code, initial on transputer system based on ring architecture. It was further developed at RIT Stockholm and the University of Uppsala by van der Spoel, Lindahl, Hess. Here it was extended to simulations on large scale clusters. 
+
+CMAKE is neccessary to install GROMACS.
+
+DSSP
+The DSSP program works by calculating the most likely secondary structure assignment given the 3D structure of a protein. It does this by reading the position of the atoms in a protein (the ATOM records in a PDB file) followed by calculation of the H-bond energy between all atoms. The algorithm will discard any hydrogens present in the input structure and calculates the optimal hydrogen positions by placing them at 1.000 Å from the backbone N in the opposite direction from the backbone C=O bond. The best two H-bonds for each atom are then used to determine the most likely class of secondary structure for each residue in the protein. (Retrieved from http://swift.cmbi.ru.nl/gv/dssp/)
+
+Martinize
+This is a python script which transforms an atomistic structure file into a coarse-grained one and a topology file. The Martini coarse-grained (CG) model uses an opproximate 4 to 1 atomistic (not hydrogens) to CG bead mapping. The CG beads have a fixed size but different properties. They interact with eachother in a different manner. For this a table is used/defined, a so called interaction map. The output files can be used by GROMACS. For this script a couple of things need to be set. The force field used is martini22. The secondary structure file is calculated by the program DSSP. The file path to this program needs to be specified. 
+
+INSANE
+INSANE stands for INSert into membrANE. This is a python script which inserts a protein in a lipid bilayer with a specified composition. 
+
+GROMPP
+This program is included in the GROMACS software package. It adds the coordinate file (the .gro or .pdb file) together with the topology file (all the bonds, angles, dihedrals, force field etc. are defined here and also the amount of molecules in the system) and the parameter file (the .mdp file). The result is an .tpr file which can then be run with the program mdrun, this is the actual simulation.
+
+= Troubles encountered & Solutions =
+Unpacking a software program should be done with tar -xzvf and not with the archive manager since the archive manager does not maintain the directory structure of the archive. I encountered a lot of trouble installing programs. One of the reasons was this. Another option is to use the wget command with the flag -O which unpacks the archive keeping its file structure.
+
+An issue was that the protein secondary structure needs to be specified, since a normal simulation can not take this into consideration. I needed to use a program for this. I tried to redo the setup with this program, however dssp could not be called by the martinize script. At a certain point I found out that the dssp program was not executable. A simple chmod command fixed this.
+
+In the paramater files (.mdp files) the cut-off scheme was not set. Automaticaly GROMACS uses the Verlet scheme. This does not work. This needed to be switched to "Group". I did this, but forgot to remove the ; at the beginning of the line resulting in GROMACS ignoring this line. The ; is used to comment in this script!
+

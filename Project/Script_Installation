@@ -1,0 +1,23 @@
+#! /bin/bash
+
+# Installing CMake
+sudo apt-get install cmake
+
+# Installing GROMACS 5.1.1
+curl ftp://ftp.gromacs.org/pub/gromacs/gromacs-5.1.1.tar.gz > gromacs-5.1.1.tar.gz
+tar -xvzf gromacs-5.1.1.tar.gz
+cd gromacs-5.1.1
+mkdir build
+cd build
+cmake .. -DGMX_BUILD_OWN_FFTW=ON -DREGRESSIONTEST_DOWNLOAD=ON
+make
+make check
+sudo make install
+source /usr/local/gromacs/bin/GMXRC 
+
+cd ../..
+
+# Installing DSSP (Determine Secondary Structure in the martinize script) for 32-bit linux system
+sudo wget ftp://ftp.cmbi.ru.nl/pub/software/dssp/dssp-2.0.4-linux-i386 -O /usr/local/bin/dssp
+sudo chmod u+x /usr/local/bin/dssp
+# If you do not run a linux 32-bit system, then go to the website ftp://ftp.cmbi.ru.nl/pub/software/dssp/ and download the appropriate program.

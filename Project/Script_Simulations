@@ -1,0 +1,15 @@
+#! /bin/bash
+
+# Energy Minimization of the system
+
+grompp -f minimization.mdp -c protein_bilayer.gro -p protein_CG.top -o minimization # Preparation of the .tpr file to run the simulation.
+mdrun -s minimization.tpr # This is the actual minimization simulation. This will give the output confout.gro and md.log and the full trajectory traj.trr
+
+# Setting up the simulation and running on cluster
+
+make_ndx -f confout.gro # make an index file so that the simulation can pressure couple the membrane and solvent separately. Use the commands: 18 | 19; name 20 solvent; !20; name 21 bilayer.
+grompp -f cluster_md.mdp -c confout.gro -n index.ndx -p protein_CG.top -o cluster_run # Prep the run file
+scp ./cluster_run.tpr f111571@peregrine.hpc.rug.nl:Protein_Bilayer_Sim/ # copy to peregrine
+scp ./protein_bilayer_peregrine_job.sh f111571@peregrine.hpc.rug.nl:Protein_Bilayer_Sim/ # copy jobscript to peregrine
+ssh f111571@peregrine.hpc.rug.nl # login to peregrine
+# Run the jobscript!!! ./Protein_Bilayer_Sim/protein_bilayer_peregrine_job.sh
